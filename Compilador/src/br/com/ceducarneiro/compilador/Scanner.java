@@ -4,7 +4,7 @@ import java.io.*;
 
 public class Scanner {
     private static final char EOF = 0;
-    private static final int STATE_ID = 17;
+    private static final int STATE_ID = 666;
 
     private BufferedReader input;
     private String line = null;
@@ -38,8 +38,26 @@ public class Scanner {
 
                 switch (st.state) {
                     case 0: {
-                        if (st.ch == ':') { //state 1
-                            st.token = new Token(TipoToken.DOIS_PONTOS);
+                        if (st.ch == '+') {
+                            st.token = new Token(TipoToken.OP_SOMA);
+                        } else if (st.ch == '(') {
+                            st.token = new Token(TipoToken.ABRE_PAR);
+                        } else if (st.ch == ')') {
+                            st.token = new Token(TipoToken.FECHA_PAR);
+                        } else if (st.ch == '&') {
+                            st.token = new Token(TipoToken.ENDERECO);
+                        } else if (st.ch == ';') {
+                            st.token = new Token(TipoToken.FIM_CMD);
+                        } else if (st.ch == '-') {
+                            st.token = new Token(TipoToken.OP_SUB);
+                        } else if (st.ch == '=') {
+                            st.token = new Token(TipoToken.ATRIBUICAO);
+                        } else if (st.ch == '"') {
+                            st.lexema += st.ch;
+                            st.state = 20;
+                        } else if (st.ch == '.') {
+                            st.lexema += st.ch;
+                            st.state = 18;
                         } else if (st.ch == ',') { //state 2
                             st.token = new Token(TipoToken.VIRGULA);
                         } else if (st.ch == 'i') {
@@ -54,6 +72,9 @@ public class Scanner {
                         } else if (isLetterOrUnderline(st.ch)) {
                             st.lexema += st.ch;
                             st.state = STATE_ID;
+                        } else if (Character.isDigit(st.ch)) {
+                            st.lexema += st.ch;
+                            st.state = 16;
                         } else if (st.ch == EOF) {
                             st.exit = true;
                         } else if (st.ch != ' ' && st.ch != '\t' && st.ch != '\n') {
@@ -92,7 +113,6 @@ public class Scanner {
                     case 10:
                         treatTipoVar(st, 'e', 5);
                         break;
-
                     case 12:
                         treatTipoVar(st, 'l', 13);
                         break;
@@ -105,7 +125,91 @@ public class Scanner {
                     case 15:
                         treatTipoVar(st, 't', 5);
                         break;
-
+                    case 16:
+                        if (Character.isDigit(st.ch)) {
+                            st.lexema += st.ch;
+                        } else if (st.ch == '.') {
+                            st.lexema += st.ch;
+                            st.state = 19;
+                        } else {
+                            st.token = new Token(TipoToken.NUMERO_INT, st.lexema);
+                            rollback(st.ch);
+                        }
+                        break;
+                    case 18:
+                        if (Character.isDigit(st.ch)) {
+                            st.lexema += st.ch;
+                            st.state = 19;
+                        } else {
+                            throw new LexException(st.ch, lineIdx, columnIdx);
+                        }
+                        break;
+                    case 19:
+                        if (Character.isDigit(st.ch)) {
+                            st.lexema += st.ch;
+                        } else {
+                            st.token = new Token(TipoToken.NUMERO_REAL, st.lexema);
+                            rollback(st.ch);
+                        }
+                        break;
+                    case 20:
+                        if (st.ch == '"') {
+                            st.lexema += st.ch;
+                            st.token = new Token(TipoToken.STRING, st.lexema);
+                        } else if (st.ch == '%') {
+                            st.lexema += st.ch;
+                            st.state = 21;
+                        } else if (st.ch != '\n') {
+                            st.lexema += st.ch;
+                            st.state = 22;
+                        } else {
+                            throw new LexException(st.ch, lineIdx, columnIdx);
+                        }
+                        break;
+                    case 21:
+                        if (st.ch == 'd') {
+                            st.lexema += st.ch;
+                            st.state = 23;
+                        } else if (st.ch == 'f') {
+                            st.lexema += st.ch;
+                            st.state = 24;
+                        } else if (st.ch != '\n') {
+                            st.lexema += st.ch;
+                            st.state = 22;
+                        } else {
+                            throw new LexException(st.ch, lineIdx, columnIdx);
+                        }
+                        break;
+                    case 22:
+                        if (st.ch == '"') {
+                            st.lexema += st.ch;
+                            st.token = new Token(TipoToken.STRING, st.lexema);
+                        } else if (st.ch != '\n') {
+                            st.lexema += st.ch;
+                        } else {
+                            throw new LexException(st.ch, lineIdx, columnIdx);
+                        }
+                        break;
+                    case 23:
+                        if (st.ch == '"') {
+                            st.token = new Token(TipoToken.FMT_INT);
+                        } else if (st.ch != '\n') {
+                            st.lexema += st.ch;
+                            st.state = 22;
+                        } else {
+                            throw new LexException(st.ch, lineIdx, columnIdx);
+                        }
+                        break;
+                    case 24:
+                        if (st.ch == '"') {
+                            st.token = new Token(TipoToken.FMT_FLOAT);
+                        } else if (st.ch != '\n') {
+                            st.lexema += st.ch;
+                            st.state = 22;
+                        } else {
+                            throw new LexException(st.ch, lineIdx, columnIdx);
+                        }
+                        break;
                     case STATE_ID: {
                         if (isLetterOrNumberOrUnderline(st.ch)) {
                             st.lexema += st.ch;
@@ -119,8 +223,8 @@ public class Scanner {
             }
         }
 
-        System.out.println("LOG: " + (st.token != null ?
-            st.token.getTipo().name() : "EOF"));
+        /*System.out.println("LOG: " + (st.token != null ?
+            st.token.getTipo().name() : "EOF"));*/
 
         return st.token;
     }
